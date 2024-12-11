@@ -639,27 +639,34 @@ function getMaps() {
 
 // this gets the link path
 function getLinkPath(elementPath) {
+    // this defines the link path to highlight the correct edges and nodes
     const linkPath = [];
 
+    // if there is a start view
     if (startView) {
+        // iterate through each element in the path (node-edge-node)
         for (let i = 0; i < elementPath.length - 1; i++) {
             const sourceId = elementPath[i];
             const targetId = elementPath[i + 1];
             const link = graph.getCell([sourceId, targetId].sort().join());
             if (!link) continue;
-
+            // this pushes the path of the links to an array
             linkPath.push(link.id);
         }
     }
-
+    // return the link path for processing
     return linkPath;
 }
 
+// showing the path of the algorithm, using async to wait for the data to come from the backend
 async function showPath() {
-
+    // this gets the element path
     const elementPath = await getElementPath();
+    // checks if the path is found
     const isPathFound = elementPath.length > 0;
+    // if the path is not found
     if (!isPathFound && startView && endView && startView.id !== endView.id && !editMode) {
+        // highlight the elements as red for the path to show that it is not found
         joint.highlighters.addClass.add(startView, 'body', invalidPathHighlightId, {
             className: invalidPathClassName
         });
@@ -669,16 +676,20 @@ async function showPath() {
         hidePath();
         return;
     }
-
+    // removes styling when not needed
     if (startView) joint.highlighters.addClass.remove(startView, invalidPathHighlightId);
     if (endView) joint.highlighters.addClass.remove(endView, invalidPathHighlightId);
+    // hides the path from view
     hidePath();
+    // gets the link path
     const linkPath = getLinkPath(elementPath);
 
+    // for each element in the path
     for (const elementId of [...elementPath, ...linkPath]) {
         const element = graph.getCell(elementId);
         const view = element.findView(paper);
         const isLink = view.model.isLink();
+        // show the path on screen
         joint.highlighters.addClass.add(view, isLink ? 'line' : 'body', pathMemberHighlightId, {
             className: pathMemberClassName
         });
@@ -686,14 +697,16 @@ async function showPath() {
         if (isLink) {
             element.set('z', 2);
         }
-
+        // push the view to show
         pathMembersViews.push(view);
     }
 }
 
+// hide the path from the viewer
 function hidePath() {
     for (const view of pathMembersViews) {
         const model = view.model;
+        // remove the styling from view
         joint.highlighters.addClass.remove(view, pathMemberHighlightId);
 
         if (model.isLink()) {
@@ -701,17 +714,20 @@ function hidePath() {
             model.labels([]);
         }
     }
-
+    // remove the path members from the array
     pathMembersViews = [];
 }
 
+// change the link style
 function toggleLinkStyle() {
     if (linkStyle) paper.svg.removeChild(linkStyle);
-
+    // get the link style
     linkStyle = getLinkStyle();
+    // change the style
     paper.svg.prepend(linkStyle);
 }
 
+// define the styles of a element (node) when it is highlighted as invalid or valid
 const styles = V.createSVGStyle(`
     .joint-element .${pathMemberClassName} {
         stroke: ${blueColor};
@@ -735,42 +751,57 @@ const styles = V.createSVGStyle(`
     }
 `);
 
+// define link style
 let linkStyle = getLinkStyle();
 
+// add the styles to the canvas
 paper.svg.prepend(styles);
 paper.svg.prepend(linkStyle);
 
 var zoomLevel = 1;
 
+// zooming control
 document.getElementById('zoom-in').addEventListener('click', function () {
+    // changing the zoom level by adding to the level
     zoomLevel = Math.min(3, zoomLevel + 0.2);
+    // change the size of the new canvas
     var size = paper.getComputedSize();
     paper.translate(0, 0);
+    // change the scales
     paper.scale(zoomLevel, zoomLevel, size.width / 2, size.height / 2);
 });
 
+// zoom contorl for zooming out
 document.getElementById('zoom-out').addEventListener('click', function () {
+    // decreasing the zoom level
     zoomLevel = Math.max(0.2, zoomLevel - 0.2);
+    // adjusting size and zoom level
     var size = paper.getComputedSize();
     paper.translate(0, 0);
     paper.scale(zoomLevel, zoomLevel, size.width / 2, size.height / 2);
 });
 
-
-
+// toggling the view of the canvas
 function toggleView(editMode) {
+    // for each element
     for (const element of graph.getElements()) {
+        // make it editable
         if (editMode == "edit") {
             element.attr('body/cursor', 'move');
+        // make it viewable and not editable
         } else if (editMode == "view") {
             element.attr('body/cursor', 'pointer');
         }
     }
 
+    // if the edit mode is on
     if (editMode == "edit") {
+        // stop listening for view commands
         viewController.stopListening();
         editController.startListening();
+        // hide any path that is displayed
         hidePath();
+        // remove all path styling
         if (startView) {
             joint.highlighters.mask.remove(startView, highlightId);
             joint.highlighters.addClass.remove(startView, invalidPathHighlightId);
@@ -778,158 +809,217 @@ function toggleView(editMode) {
         if (endView) {
             joint.highlighters.addClass.remove(endView, invalidPathHighlightId);
         }
+    // if the view mode is on
     } else if (editMode == "view") {
+        // start listening for view commands
         viewController.startListening();
         editController.stopListening();
+        // show the path
         showPath();
+        // add highlighters when requested
         if (startView) {
             joint.highlighters.mask.add(startView, 'body', highlightId, startAttrs);
         }
     }
 }
 
+// listening for save button press
 document.addEventListener("DOMContentLoaded", function () {
-
+    // map name input cell
     const mapNameInput = document.getElementById('mapName');
-
+    // get the element id of the button
     document.getElementById('saveMap').addEventListener('click', function () {
         const mapName = mapNameInput.value;
-
+        // save the map with the name that was entered
         saveMap(mapName);
-
+        // clear the input box
         mapNameInput.value = '';
     });
 });
 
+// load maps when the site loads
 window.onload = function () {
     loadMaps()
 };
 
+// loading the maps
 function loadMaps() {
+    // get the maps from the backend
     getMaps()
+        // populate the table after maps are received
         .then((maps) => populateTable(maps))
         .catch((error) => console.error('Error loading maps:', error));
 }
 
+// populate the table with the maps
 function populateTable(maps) {
+    // define what the table is
     const tableBody = document.getElementById('table-body');
+    // clear the table
     tableBody.innerHTML = '';
 
+    // change the load button appearance
     function updateLoadButtonsState() {
+        // if there is an element on the map
         const hasElementsOnMap = graph.getElements().length > 0 || graph.getLinks().length > 0;
+        // find all load buttons
         const loadButtons = document.querySelectorAll('.btn-load-map');
+        // loop through all the buttons
         loadButtons.forEach(button => {
+            // if there is an element on the canvas
             if (hasElementsOnMap) {
+                // disable the buttons
                 button.classList.add('btn-disabled');
                 button.disabled = true;
             } else {
+                // if not then remove the disables tag
                 button.classList.remove('btn-disabled');
                 button.disabled = false;
             }
         });
     }
 
+    // for each of the maps on the table
     maps.forEach((map, index) => {
+        // define the table elements
         const row = document.createElement('tr');
-
         const mapNameCell = document.createElement('td');
         const mapNameButton = document.createElement('button');
+        // set the styling
         mapNameButton.className = 'btn btn-neutral';
         mapNameButton.textContent = map.mapName;
+        // create a new map display
         mapNameCell.appendChild(mapNameButton);
         row.appendChild(mapNameCell);
-
+        // create the load button
         const loadCell = document.createElement('td');
         const loadButton = document.createElement('button');
         loadButton.className = 'btn btn-outline btn-info btn-load-map';
         loadButton.textContent = 'Load';
+        // add a listener to check if the button is pressed
         loadButton.addEventListener('click', () => {
+            // if the button is not disabled
             if (!loadButton.classList.contains('btn-disabled')) {
+                // load the map
                 loadMap(map);
+                // update the load button state to disabled
                 updateLoadButtonsState();
             }
         });
+        // add the button to the table
         loadCell.appendChild(loadButton);
         row.appendChild(loadCell);
-
+        // add the delete button
         const deleteCell = document.createElement('td');
         const deleteButton = document.createElement('button');
         deleteButton.className = 'btn btn-outline btn-error';
         deleteButton.textContent = 'Delete';
+        // listen for a click on the delete button to delete that map id
         deleteButton.addEventListener('click', () => deleteMap(map.id));
+        // add the button to the table
         deleteCell.appendChild(deleteButton);
         row.appendChild(deleteCell);
-
+        // add a new row on the table
         tableBody.appendChild(row);
     });
 
+    // if the graph changes, update the button state
     graph.on('change', updateLoadButtonsState);
+    // when the graph is cleared
     graph.on('clear', () => {
+        // reset the button state
         const loadButtons = document.querySelectorAll('.btn-load-map');
+        // for each button remove the disabled tag
         loadButtons.forEach(button => {
             button.classList.remove('btn-disabled');
             button.disabled = false;
         });
     });
-
+    // update the button states
     updateLoadButtonsState();
 }
 
+// loading maps onto the canvas
 function loadMap(map) {
     console.log(map);
+    // set the index at 0
     current_index = 0;
     const nodesData = JSON.parse(map.nodeMap);
 
+    // clear the graph
     graph.clear();
+    // start with an empty map array
     map_array = [];
 
+    // for each of the data nodes in the data from the map
     nodesData.forEach(nodeData => {
+        // define the format for the nodes
         const { id, x, y, end } = nodeData;
 
+        // skip deleted nodes from the maps
         if (x === "n/a" || y === "n/a") {
             console.warn(`Skipping node with id ${id} due to invalid coordinates.`);
             current_index++
             return;
         }
 
+        // add an element with each node iteration
         addElement({ createNode, size: 40 }, null, x, y);
-
+        // add that node to the map array
         map_array.push({ id, x, y, end });
     });
 
+    // for each of the nodes
     nodesData.forEach(nodeData => {
+        // look at the connection for each node
         const { id, end } = nodeData;
+        // if there is a connection that exists
         if (end && Array.isArray(end)) {
+            // for each of the target ids defined in the end array
             end.forEach(targetId => {
+                // create a new link
                 createLink(id, targetId);
             });
         }
     });
 }
 
+// ddelete a map from the menu
 function deleteMap(mapId) {
+    // request link
     const backendURL = `http://127.0.0.1:8199/api/deleteMap/${mapId}`;
     const xhr = new XMLHttpRequest();
+    // create a delete request
     xhr.open('DELETE', backendURL, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
 
+    // when the server responds
     xhr.onload = function () {
+        // if the status is successful
         if (xhr.status >= 200 && xhr.status < 300) {
+            // load the maps into the table
             loadMaps();
         } else {
+            // log error
             console.error('Failed to delete map:', xhr.status);
         }
     };
 
+    // if there is an error with the request, log
     xhr.onerror = function () {
         console.error('Request failed');
     };
 
+    // send the request
     xhr.send();
 }
 
+// clear the map
 function clearMap() {
+    // clearing the map
     graph.clear()
+    // resetting the index
     current_index = 0;
+    // reload the window
     window.location.reload();
 }

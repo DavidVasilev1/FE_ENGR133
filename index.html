@@ -2,12 +2,14 @@
 layout: default
 title: Home
 ---
+<!-- define the canvas styling -->
 <style>
 	#interactive-graph {
 		border: 3px solid black;
 		border-radius: 10px;
 	}
 </style>
+<!-- this gets the general variables for the graph to work -->
 <script>
 	var nodes_array = [];
 	var node_coords = [];
@@ -18,43 +20,53 @@ title: Home
 	var end = [];
 	var current_index = 0;
 </script>
+<!-- addons for the canvas to work -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.4.1/backbone.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jointjs/3.7.5/joint.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jointjs/dist/joint.min.css">
+<!-- importing the js to the html  -->
 <script type="module" src="{{ site.baseurl }}/assets/scripts/graph.js"></script>
 
+<!-- using tailwind to style the frontend, creating main division -->
 <div class="flex justify-center items-center h-full">
 	<div>
 		<div class="card pl-200 ml-10 mr-5 w-96 bg-base-200 shadow-xl">
+			<!-- side card for instructions on how to use -->
 			<div class="card-body">
 				<h2 class="card-title SFPro-Round-Regular">How to Use</h2>
 				<p id="add-nodes-instructions" class="SFPro-Round-Light">Double-click to add nodes</p>
-				<p id="connect-nodes-instructions" class="SFPro-Round-Light">Click on the source node</p>
-				<p id="connect-nodes-instructions" class="SFPro-Round-Light">Hover over any node to find the shortest
-					path</p>
+				<p id="add-nodes-instructions" class="SFPro-Round-Light">Double-click nodes to remove them</p>
+				<p id="add-nodes-instructions" class="SFPro-Round-Light">Hover over nodes and drag little icon to desired node to add edges</p>
+				<p id="connect-nodes-instructions" class="SFPro-Round-Light">Click on the source node in view mode</p>
+				<p id="connect-nodes-instructions" class="SFPro-Round-Light">Hover over any node to find the shortest path in view mode</p>
 				<div class="card-actions justify-center pt-5">
+					<!-- this is the two buttons to switch between view and edit mode -->
 					<button class="btn" id="edit-mode-toggle" onclick="toggleEditMode('edit')" disabled>Edit</button>
-					<button class="btn btn-outline btn-info" id="restart-button"
-						onclick="toggleEditMode('view')">View</button>
+					<button class="btn btn-outline btn-info" id="restart-button" onclick="toggleEditMode('view')">View</button>
 				</div>
 			</div>
 		</div>
+		<!-- card holding the clear map and the load map buttons -->
 		<div class="card pl-200 ml-10 mr-5 mt-5 w-96 bg-base-200 shadow-xl">
 			<div class="card-body">
 				<div class="flex items-center justify-center">
 					<button class="btn btn-warning mr-5" onclick="clearMap()">Clear Map</button>
+					<!-- linked to daisyui modal -->
 					<button class="btn btn-success" onclick="saveMapDialog.showModal()">Save Map</button>
 				</div>
+				<!-- popup for the user to save a map -->
 				<dialog id="saveMapDialog" class="modal">
 					<div class="modal-box">
 						<h3 class="text-lg font-bold">Save Map</h3>
 						<p class="py-4">Enter Map Name Below:</p>
+						<!-- where the user enters their data -->
 						<input type="text" id="mapName" placeholder="Type here"
 							class="input input-bordered w-full max-w-xs" />
 						<div class="modal-action">
 							<form method="dialog">
+								<!-- button to save a map -->
 								<button class="btn btn-success" id="saveMap">Save</button>
 								<button class="btn">Close</button>
 							</form>
@@ -64,13 +76,16 @@ title: Home
 			</div>
 		</div>
 	</div>
+	<!-- zoom buttons -->
 	<div class="mt-10">
 		<div class="flex justify-center p-3">
 			<span id="zoom-out" class="btn btn-outline mr-4 SFPro-Round-Light">Zoom -</span>
 			<span id="zoom-in" class="btn btn-outline SFPro-Round-Light">Zoom +</span>
 		</div>
+		<!-- graph canvas -->
 		<div id="interactive-graph" class="ml-5"></div>
 	</div>
+	<!-- maps table -->
 	<div class="card pl-200 ml-10 mr-5 w-96 bg-base-200 shadow-xl">
 		<div class="card-body">
 			<div class="flex flex-col">
@@ -80,6 +95,7 @@ title: Home
 						<table class="table">
 							<thead>
 								<tr>
+									<!-- this is where the maps will be loaded -->
 									<th></th>
 									<th></th>
 									<th></th>
@@ -95,38 +111,46 @@ title: Home
 	</div>
 </div>
 
+<!-- js used to trigger events which send requests to the main js file -->
 <script>
+	// makes sure the maps all load on reload
 	window.onload = function () {
 		const loadMaps = new CustomEvent("loadMaps");
 		document.dispatchEvent(loadMaps);
 	};
 
+	// clearing the map event controlled in the js file
 	function clearMap() {
 		const clearMap = new CustomEvent("clearMap", { });
 		document.dispatchEvent(clearMap);
 	}
 
+	// this is sued to toggle modes
 	function toggleEditMode(mode) {
+		// two different buttons for toggling modes
 		const doneButton = document.getElementById("edit-mode-toggle");
 		const restartButton = document.getElementById("restart-button");
 
+		// if the edit mode is toggled
 		if (mode === 'edit') {
+			// disable the view button
 			doneButton.classList.remove("btn-outline");
 			doneButton.disabled = true;
-
+			// enable the edit button
 			restartButton.classList.add("btn-outline", "btn-info");
 			restartButton.disabled = false;
-
+			// send a event to the js backend to toggle the event for the canvas to know what to do
 			const toggleEvent = new CustomEvent("toggleMode", { detail: { mode } });
 			document.dispatchEvent(toggleEvent);
 			console.log("edit")
+		// if the mode is view
 		} else if (mode === 'view') {
+			// invert the styling of the buttons
 			restartButton.classList.remove("btn-outline");
 			restartButton.disabled = true;
-
 			doneButton.classList.add("btn-outline", "btn-info");
 			doneButton.disabled = false;
-
+			// send an event to the backend for the canvas to know the mode is in view
 			const toggleEvent = new CustomEvent("toggleMode", { detail: { mode } });
 			document.dispatchEvent(toggleEvent);
 			console.log("view")
